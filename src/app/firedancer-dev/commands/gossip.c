@@ -159,6 +159,8 @@ configure_args( void ) {
   args.configure.stages[ stage_idx++ ] = &fd_cfg_stage_ethtool_channels;
   args.configure.stages[ stage_idx++ ] = &fd_cfg_stage_ethtool_gro;
   args.configure.stages[ stage_idx++ ] = &fd_cfg_stage_ethtool_loopback;
+  args.configure.stages[ stage_idx++ ] = &fd_cfg_stage_ethtool_ntuple;
+  args.configure.stages[ stage_idx++ ] = &fd_cfg_stage_ethtool_rxfh;
   args.configure.stages[ stage_idx++ ] = NULL;
 
   return args;

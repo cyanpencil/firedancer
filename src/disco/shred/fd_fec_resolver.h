@@ -194,13 +194,25 @@ fd_fec_resolver_set_shred_version( fd_fec_resolver_t * resolver,
    This function returns SHRED_COMPLETES when the received shred is the
    last one and completes the FEC set.  In this case, the function
    populates any missing shreds in the FEC set stored in out_fec_set. */
-int fd_fec_resolver_add_shred( fd_fec_resolver_t    * resolver,
-                               fd_shred_t const     * shred,
-                               ulong                  shred_sz,
-                               uchar const          * leader_pubkey,
-                               fd_fec_set_t const * * out_fec_set,
-                               fd_shred_t const   * * out_shred,
-                               fd_bmtree_node_t     * out_merkle_root );
+
+#define FD_FEC_RESOLVER_EVICT_NONE  (ULONG_MAX << 48) | FD_SHRED_BLK_MAX
+
+struct fd_fec_resolver_res {
+   int   retval;
+   ulong thrashed_slot;
+   ulong thrashed_fec_set_idx;
+   ulong max_shred_idx;
+};
+typedef struct fd_fec_resolver_res fd_fec_resolver_res_t;
+
+fd_fec_resolver_res_t
+fd_fec_resolver_add_shred( fd_fec_resolver_t    * resolver,
+                           fd_shred_t const     * shred,
+                           ulong                  shred_sz,
+                           uchar const          * leader_pubkey,
+                           fd_fec_set_t const * * out_fec_set,
+                           fd_shred_t const   * * out_shred,
+                           fd_bmtree_node_t     * out_merkle_root );
 
 
 /* fd_fec_resolver_done_contains returns 1 if the FEC with signature

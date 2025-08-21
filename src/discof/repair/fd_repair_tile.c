@@ -593,11 +593,9 @@ handle_contact_info_update( fd_repair_tile_ctx_t *             ctx,
        this, we proactively send a placeholder Repair request as soon as we
        receive a peer's contact information for the first time, effectively
        prepaying the RTT cost. */
-      if( FD_LIKELY( ctx->repair_sign_cnt>0 ) ) {
-        fd_repair_send_request( ctx, ctx->stem, ctx->repair, fd_needed_window_index, 0, 0, &contact_info->pubkey, fd_log_wallclock() );
-      }
-    ulong hash_src = 0xfffffUL & fd_ulong_hash( (ulong)repair_peer.addr | ((ulong)repair_peer.port<<32) );
-    FD_LOG_INFO(( "Added repair peer: pubkey %s hash_src %lu", FD_BASE58_ENC_32_ALLOCA( msg->origin_pubkey ), hash_src ));
+    if( FD_LIKELY( ctx->repair_sign_cnt>0 ) ) {
+      fd_repair_send_request( ctx, ctx->stem, ctx->repair, fd_needed_window_index, 0, 0, &contact_info->pubkey, fd_log_wallclock() );
+    }
   }
 }
 
@@ -673,7 +671,7 @@ during_frag( fd_repair_tile_ctx_t * ctx,
     FD_LOG_ERR(( "Frag from unknown link (kind=%u in_idx=%lu)", in_kind, in_idx ));
   }
 
-  fd_memcpy( ctx->buffer, dcache_entry, dcache_entry_sz );
+  if( FD_LIKELY( dcache_entry_sz > 0 ) ) fd_memcpy( ctx->buffer, dcache_entry, dcache_entry_sz );
 }
 
 static inline void
@@ -823,6 +821,17 @@ after_frag( fd_repair_tile_ctx_t * ctx,
   }
 
   if( FD_UNLIKELY( in_kind==IN_KIND_SHRED ) ) {
+    int is_thrash_evicted =(sz == 0);
+    if( FD_UNLIKELY( is_thrash_evicted ) ) {
+      ulong thrashed_slot        = fd_disco_shred_repair_shred_sig_slot( sig );
+      uint  thrashed_fec_set_idx = fd_disco_shred_repair_shred_sig_fec_set_idx( sig );
+      uint  thrashed_max_idx     = fd_disco_shred_repair_shred_sig_data_cnt( sig );
+
+      fd_forest_clear_fec( ctx->forest, thrashed_slot, thrashed_fec_set_idx, thrashed_max_idx );
+      FD_LOG_WARNING(( "cleared fec slot: %lu %u max: %u", thrashed_slot, thrashed_fec_set_idx, thrashed_max_idx ));
+      return;
+    }
+
     fd_shred_t * shred = (fd_shred_t *)fd_type_pun( ctx->buffer );
     if( FD_UNLIKELY( shred->slot <= fd_forest_root_slot( ctx->forest ) ) ) {
       FD_LOG_WARNING(( "shred %lu %u %u too old, ignoring", shred->slot, shred->idx, shred->fec_set_idx ));
@@ -855,6 +864,7 @@ after_frag( fd_repair_tile_ctx_t * ctx,
     fd_fec_sig_t * fec_sig = fd_fec_sig_query( ctx->fec_sigs, (shred->slot << 32) | shred->fec_set_idx, NULL );
     if( FD_UNLIKELY( !fec_sig && !fec_completes ) ) {
       fec_sig = fd_fec_sig_insert( ctx->fec_sigs, (shred->slot << 32) | shred->fec_set_idx );
+      FD_TEST( fec_sig );
       memcpy( fec_sig->sig, shred->signature, sizeof(fd_ed25519_sig_t) );
     }
 
@@ -910,6 +920,7 @@ after_frag( fd_repair_tile_ctx_t * ctx,
           uchar * chunk = fd_chunk_to_laddr( ctx->shred_out_ctx[tile_idx].mem, ctx->shred_out_ctx[tile_idx].chunk );
           memcpy( chunk, fec_sig->sig, sizeof(fd_ed25519_sig_t) );
           fd_fec_sig_remove( ctx->fec_sigs, fec_sig );
+          FD_LOG_INFO(( "publishing FORCE COMPLETE %lu %u fec_sig:%s", shred->slot, i, FD_BASE58_ENC_32_ALLOCA( &fec_sig->sig ) ));
           fd_stem_publish( stem, ctx->shred_out_ctx[tile_idx].idx, last_idx, ctx->shred_out_ctx[tile_idx].chunk, sizeof(fd_ed25519_sig_t), 0UL, 0UL, 0UL );
           ctx->shred_out_ctx[tile_idx].chunk = fd_dcache_compact_next( ctx->shred_out_ctx[tile_idx].chunk, sizeof(fd_ed25519_sig_t), ctx->shred_out_ctx[tile_idx].chunk0, ctx->shred_out_ctx[tile_idx].wmark );
           blk->consumed_idx = j;
@@ -1088,7 +1099,7 @@ static inline void
 during_housekeeping( fd_repair_tile_ctx_t * ctx ) {
   fd_repair_settime( ctx->repair, fd_log_wallclock() );
 
-# if DEBUG_LOGGING
+# if LOGGING
   long now = fd_log_wallclock();
   if( FD_UNLIKELY( now - ctx->tsprint > (long)30e9 ) ) {
     fd_forest_print( ctx->forest );

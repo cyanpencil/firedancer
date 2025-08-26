@@ -63,7 +63,6 @@ struct fd_rpc_acct_map_elem {
   fd_pubkey_t key;
   ulong next;
   ulong slot;
-  ulong age;
   fd_rpc_txn_key_t sig; /* Transaction signature */
   struct fd_rpc_acct_map_elem * next_lru;
 };

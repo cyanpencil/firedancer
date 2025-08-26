@@ -823,9 +823,9 @@ after_frag( fd_repair_tile_ctx_t * ctx,
   if( FD_UNLIKELY( in_kind==IN_KIND_SHRED ) ) {
     int is_thrash_evicted = (sz==0);
     if( FD_UNLIKELY( is_thrash_evicted ) ) {
-      ulong thrashed_slot        = fd_disco_shred_repair_shred_sig_slot( sig );
+      ulong thrashed_slot        = fd_disco_shred_repair_shred_sig_slot       ( sig );
       uint  thrashed_fec_set_idx = fd_disco_shred_repair_shred_sig_fec_set_idx( sig );
-      uint  thrashed_max_idx     = fd_disco_shred_repair_shred_sig_data_cnt( sig );
+      uint  thrashed_max_idx     = fd_disco_shred_repair_shred_sig_data_cnt   ( sig );
 
       fd_forest_clear_fec( ctx->forest, thrashed_slot, thrashed_fec_set_idx, thrashed_max_idx );
       return;

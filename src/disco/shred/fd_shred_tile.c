@@ -875,10 +875,12 @@ after_frag( fd_shred_ctx_t *    ctx,
 
     fd_fec_set_t const * out_fec_set[1];
     fd_shred_t const   * out_shred[1];
+    ulong thrashed_slot           = ULONG_MAX;
+    uint  thrashed_fec_set_idx    = FD_SHRED_BLK_MAX;
+    uint  thrashed_max_dshred_idx = FD_SHRED_BLK_MAX;
 
     long add_shred_timing  = -fd_tickcount();
-    fd_fec_resolver_res_t res = fd_fec_resolver_add_shred( ctx->resolver, shred, shred_buffer_sz, slot_leader->uc, out_fec_set, out_shred, &out_merkle_root );
-    int rv = res.retval;
+    int rv = fd_fec_resolver_add_shred( ctx->resolver, shred, shred_buffer_sz, slot_leader->uc, out_fec_set, out_shred, &out_merkle_root, &thrashed_slot, &thrashed_fec_set_idx, &thrashed_max_dshred_idx );
     add_shred_timing      +=  fd_tickcount();
 
     fd_histf_sample( ctx->metrics->add_shred_timing, (ulong)add_shred_timing );
@@ -917,11 +919,11 @@ after_frag( fd_shred_ctx_t *    ctx,
       }
     }
 
-    if( FD_UNLIKELY( res.thrashed_slot > 0 && res.thrashed_fec_set_idx < FD_SHRED_BLK_MAX ) ) {
+    if( FD_UNLIKELY( thrashed_slot < ULONG_MAX && thrashed_fec_set_idx < FD_SHRED_BLK_MAX && thrashed_max_dshred_idx < FD_SHRED_BLK_MAX ) ) {
       /* We've thrashed a FEC set in the fec_resolver. We need to let
          repair know to clear out it's cached info for that fec set and
          re-repair those shreds. */
-      ulong sig_ = fd_disco_shred_repair_shred_sig( 0, res.thrashed_slot, (uint)res.thrashed_fec_set_idx, 0, (uint)res.max_shred_idx );
+      ulong sig_ = fd_disco_shred_repair_shred_sig( 0, thrashed_slot, thrashed_fec_set_idx, 0, thrashed_max_dshred_idx );
       fd_stem_publish( stem, ctx->repair_out_idx, sig_, ctx->repair_out_chunk, 0, 0, ctx->tsorig, ctx->tsorig );
       ctx->repair_out_chunk = fd_dcache_compact_next( ctx->repair_out_chunk, 0, ctx->repair_out_chunk0, ctx->repair_out_wmark );
     }

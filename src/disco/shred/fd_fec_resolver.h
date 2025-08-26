@@ -203,22 +203,17 @@ fd_fec_resolver_set_shred_version( fd_fec_resolver_t * resolver,
    set was evicted, thrashed_slot and max_shred_idx will be 0, and
    thrashed_fec_set_idx will be FD_SHRED_BLK_MAX. */
 
-struct fd_fec_resolver_res {
-   int   retval;
-   ulong thrashed_slot;
-   ulong thrashed_fec_set_idx;
-   ulong max_shred_idx;
-};
-typedef struct fd_fec_resolver_res fd_fec_resolver_res_t;
-
-fd_fec_resolver_res_t
+int
 fd_fec_resolver_add_shred( fd_fec_resolver_t    * resolver,
                            fd_shred_t const     * shred,
                            ulong                  shred_sz,
                            uchar const          * leader_pubkey,
                            fd_fec_set_t const * * out_fec_set,
                            fd_shred_t const   * * out_shred,
-                           fd_bmtree_node_t     * out_merkle_root );
+                           fd_bmtree_node_t     * out_merkle_root,
+                           ulong                * out_thrashed_slot,
+                           uint                 * out_thrashed_fec_set_idx,
+                           uint                 * out_max_dshred_idx );
 
 
 /* fd_fec_resolver_done_contains returns 1 if the FEC with signature

@@ -828,7 +828,6 @@ after_frag( fd_repair_tile_ctx_t * ctx,
       uint  thrashed_max_idx     = fd_disco_shred_repair_shred_sig_data_cnt( sig );
 
       fd_forest_clear_fec( ctx->forest, thrashed_slot, thrashed_fec_set_idx, thrashed_max_idx );
-      FD_LOG_WARNING(( "cleared fec slot: %lu %u max: %u", thrashed_slot, thrashed_fec_set_idx, thrashed_max_idx ));
       return;
     }
 
@@ -920,7 +919,6 @@ after_frag( fd_repair_tile_ctx_t * ctx,
           uchar * chunk = fd_chunk_to_laddr( ctx->shred_out_ctx[tile_idx].mem, ctx->shred_out_ctx[tile_idx].chunk );
           memcpy( chunk, fec_sig->sig, sizeof(fd_ed25519_sig_t) );
           fd_fec_sig_remove( ctx->fec_sigs, fec_sig );
-          FD_LOG_INFO(( "publishing FORCE COMPLETE %lu %u fec_sig:%s", shred->slot, i, FD_BASE58_ENC_32_ALLOCA( &fec_sig->sig ) ));
           fd_stem_publish( stem, ctx->shred_out_ctx[tile_idx].idx, last_idx, ctx->shred_out_ctx[tile_idx].chunk, sizeof(fd_ed25519_sig_t), 0UL, 0UL, 0UL );
           ctx->shred_out_ctx[tile_idx].chunk = fd_dcache_compact_next( ctx->shred_out_ctx[tile_idx].chunk, sizeof(fd_ed25519_sig_t), ctx->shred_out_ctx[tile_idx].chunk0, ctx->shred_out_ctx[tile_idx].wmark );
           blk->consumed_idx = j;

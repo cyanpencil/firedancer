@@ -193,7 +193,15 @@ fd_fec_resolver_set_shred_version( fd_fec_resolver_t * resolver,
 
    This function returns SHRED_COMPLETES when the received shred is the
    last one and completes the FEC set.  In this case, the function
-   populates any missing shreds in the FEC set stored in out_fec_set. */
+   populates any missing shreds in the FEC set stored in out_fec_set.
+
+   Along with the return err code, if adding this shred caused an
+   incomplete FEC set to be evicted from the current map, the slot and
+   FEC set idx of the evicted FEC set will be written to thrashed_slot
+   and thrashed_fec_set_idx.  The max data shred idx received thus far
+   of the evicted FEC set will be written to max_shred_idx.  If no FEC
+   set was evicted, thrashed_slot and max_shred_idx will be 0, and
+   thrashed_fec_set_idx will be FD_SHRED_BLK_MAX. */
 
 struct fd_fec_resolver_res {
    int   retval;

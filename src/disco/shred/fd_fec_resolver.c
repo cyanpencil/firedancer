@@ -22,7 +22,6 @@ struct __attribute__((aligned(32UL))) set_ctx {
   set_ctx_t *           prev;
   set_ctx_t *           next;
   ulong                 total_rx_shred_cnt;
-  ulong                 slot;
   ulong                 fec_set_idx;
   /* The shred index of the first parity shred in this FEC set */
   ulong                 parity_idx0;
@@ -310,17 +309,19 @@ ctx_ll_insert( set_ctx_t * p, set_ctx_t * c ) {
   return c;
 }
 
-#define ret_ok(retval)     (fd_fec_resolver_res_t){retval, 0UL, FD_SHRED_BLK_MAX, 0UL}
-#define ret_thrash(retval) (fd_fec_resolver_res_t){retval, thrashed_slot, thrashed_fec_set_idx, max_rcvd_shred_idx}
 
 fd_fec_resolver_res_t
 fd_fec_resolver_add_shred( fd_fec_resolver_t    * resolver,
-                               fd_shred_t const     * shred,
-                               ulong                  shred_sz,
-                               uchar const          * leader_pubkey,
-                               fd_fec_set_t const * * out_fec_set,
-                               fd_shred_t const   * * out_shred,
-                               fd_bmtree_node_t     * out_merkle_root ) {
+                           fd_shred_t const     * shred,
+                           ulong                  shred_sz,
+                           uchar const          * leader_pubkey,
+                           fd_fec_set_t const * * out_fec_set,
+                           fd_shred_t const   * * out_shred,
+                           fd_bmtree_node_t     * out_merkle_root ) {
+
+# define ret_ok(retval)     (fd_fec_resolver_res_t){retval, 0UL, FD_SHRED_BLK_MAX, 0UL}
+# define ret_thrash(retval) (fd_fec_resolver_res_t){retval, thrashed_slot, thrashed_fec_set_idx, max_rcvd_dshred_idx}
+
   /* Unpack variables */
   ulong partial_depth = resolver->partial_depth;
   ulong done_depth    = resolver->done_depth;
@@ -416,7 +417,7 @@ fd_fec_resolver_add_shred( fd_fec_resolver_t    * resolver,
 
   ulong thrashed_slot        = 0;
   ulong thrashed_fec_set_idx = FD_SHRED_BLK_MAX;
-  ulong max_rcvd_shred_idx   = 0;
+  ulong max_rcvd_dshred_idx   = 0;
 
   if( FD_UNLIKELY( !ctx ) ) { /* This is the first shred in the FEC set */
 
@@ -428,16 +429,21 @@ fd_fec_resolver_add_shred( fd_fec_resolver_t    * resolver,
       set_ctx_t * victim_ctx = resolver->curr_ll_sentinel->prev;
       fd_fec_set_t * set = victim_ctx->set;
 
-      /* Add this one that we're sacrificing to the done map to
-         prevent the possibility of thrashing. */
-      //ctx_ll_insert( done_ll_sentinel, ctx_map_insert( done_map, victim_ctx->sig ) );
-      //if( FD_UNLIKELY( ctx_map_key_cnt( done_map ) > done_depth ) ) ctx_map_remove( done_map, ctx_ll_remove( done_ll_sentinel->prev ) );
-      thrashed_slot        = victim_ctx->slot;
-      thrashed_fec_set_idx = victim_ctx->fec_set_idx;
+      /* Find the highest data shred received in the FEC set */
 
-      max_rcvd_shred_idx = d_rcvd_last( set->data_shred_rcvd );
-      if( max_rcvd_shred_idx == ~0UL ) max_rcvd_shred_idx = 0UL;
-      FD_LOG_INFO(("THRASHED: EVICTED but not added to done map %lu %lu, data_shreds_rcvd %lu, parity_shreds_rcvd %lu, max_d_rcvd_shred_idx %lu", victim_ctx->slot, victim_ctx->fec_set_idx, d_rcvd_cnt( set->data_shred_rcvd ), p_rcvd_cnt( set->parity_shred_rcvd ), max_rcvd_shred_idx ));
+      max_rcvd_dshred_idx = d_rcvd_last( set->data_shred_rcvd );
+      fd_shred_t const * max_shred;
+      if( max_rcvd_dshred_idx == ~0UL ) {
+        max_rcvd_dshred_idx = 0UL;
+        max_shred = fd_shred_parse( set->parity_shreds[ d_rcvd_first( set->parity_shred_rcvd ) ], FD_SHRED_MAX_SZ );
+      } else {
+        max_shred = fd_shred_parse( set->data_shreds  [ max_rcvd_dshred_idx ],                     FD_SHRED_MIN_SZ );
+      }
+
+      thrashed_fec_set_idx = max_shred->fec_set_idx;
+      thrashed_slot        = max_shred->slot;
+
+      FD_LOG_INFO(("Thrashed from fec_resolver in-progress map %lu %lu, data_shreds_rcvd %lu, parity_shreds_rcvd %lu, max_d_rcvd_shred_idx %lu", thrashed_slot, thrashed_fec_set_idx, d_rcvd_cnt( set->data_shred_rcvd ), p_rcvd_cnt( set->parity_shred_rcvd ), max_rcvd_dshred_idx ));
 
       freelist_push_tail( free_list,        victim_ctx->set  );
       bmtrlist_push_tail( bmtree_free_list, victim_ctx->tree );
@@ -494,7 +500,6 @@ fd_fec_resolver_add_shred( fd_fec_resolver_t    * resolver,
     /* Reset the FEC set */
     ctx->set->data_shred_cnt   = SHRED_CNT_NOT_SET;
     ctx->set->parity_shred_cnt = SHRED_CNT_NOT_SET;
-    ctx->fec_set_idx           = SHRED_CNT_NOT_SET;
     d_rcvd_join( d_rcvd_new( d_rcvd_delete( d_rcvd_leave( ctx->set->data_shred_rcvd   ) ) ) );
     p_rcvd_join( p_rcvd_new( p_rcvd_delete( p_rcvd_leave( ctx->set->parity_shred_rcvd ) ) ) );
 
@@ -525,11 +530,7 @@ fd_fec_resolver_add_shred( fd_fec_resolver_t    * resolver,
     ctx->set->data_shred_cnt   = shred->code.data_cnt;
     ctx->set->parity_shred_cnt = shred->code.code_cnt;
     ctx->parity_idx0           = shred->idx - in_type_idx;
-    //ctx->fec_set_idx           = shred->fec_set_idx;
-  }
-  if( FD_UNLIKELY( ctx->fec_set_idx==SHRED_CNT_NOT_SET ) ) {
-    ctx->fec_set_idx = shred->fec_set_idx;
-    ctx->slot        = shred->slot;
+    ctx->fec_set_idx           = shred->fec_set_idx;
   }
 
   /* At this point, the shred has passed Merkle validation and is new.
@@ -566,7 +567,6 @@ fd_fec_resolver_add_shred( fd_fec_resolver_t    * resolver,
   uchar                 data_variant   = ctx->data_variant;
 
   ctx_ll_insert( done_ll_sentinel, ctx_map_insert( done_map, ctx->sig ) );
-  FD_LOG_INFO(("Put ctx in done map %lu %lu, data_shreds_rcvd %lu, parity_shreds_rcvd %lu", ctx->slot, ctx->fec_set_idx, d_rcvd_cnt( set->data_shred_rcvd ), p_rcvd_cnt( set->parity_shred_rcvd )) );
   if( FD_UNLIKELY( ctx_map_key_cnt( done_map ) > done_depth ) ) ctx_map_remove( done_map, ctx_ll_remove( done_ll_sentinel->prev ) );
 
   ctx_map_remove( curr_map, ctx_ll_remove( ctx ) );
@@ -722,6 +722,9 @@ fd_fec_resolver_add_shred( fd_fec_resolver_t    * resolver,
   *out_fec_set = set;
 
   return ret_thrash(FD_FEC_RESOLVER_SHRED_COMPLETES);
+
+# undef ret_ok
+# undef ret_thrash
 }
 
 int
@@ -877,7 +880,6 @@ fd_fec_resolver_force_complete( fd_fec_resolver_t  *  resolver,
   fd_bmtree_commit_t  * tree = ctx->tree;
 
   ctx_ll_insert( done_ll_sentinel, ctx_map_insert( done_map, ctx->sig ) );
-  FD_LOG_INFO(("FORCE: Put ctx in done map %lu %u, data_shreds_rcvd %lu, parity_shreds_rcvd %lu", last_shred->slot, last_shred->fec_set_idx, d_rcvd_cnt( set->data_shred_rcvd ), p_rcvd_cnt( set->parity_shred_rcvd )) );
   if( FD_UNLIKELY( ctx_map_key_cnt( done_map ) > done_depth ) ) ctx_map_remove( done_map, ctx_ll_remove( done_ll_sentinel->prev ) );
   ctx_map_remove( curr_map, ctx_ll_remove( ctx ) );
 

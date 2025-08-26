@@ -634,13 +634,14 @@ publish_slot_notifications( fd_replay_tile_ctx_t * ctx,
 #define NOTIFY_START msg = fd_chunk_to_laddr( ctx->notif_out->mem, ctx->notif_out->chunk )
 #define NOTIFY_END                                                      \
   fd_mcache_publish( ctx->notif_out->mcache, ctx->notif_out->depth, ctx->notif_out->seq, \
-                      0UL, ctx->notif_out->chunk, sizeof(fd_replay_notif_msg_t), 0UL, tsorig, tsorig ); \
+                     0UL, ctx->notif_out->chunk, sizeof(fd_replay_notif_msg_t), 0UL, \
+                     fd_frag_meta_ts_comp(tsorig), fd_frag_meta_ts_comp(tsorig) ); \
   ctx->notif_out->seq   = fd_seq_inc( ctx->notif_out->seq, 1UL );     \
   ctx->notif_out->chunk = fd_dcache_compact_next( ctx->notif_out->chunk, sizeof(fd_replay_notif_msg_t), \
                                                   ctx->notif_out->chunk0, ctx->notif_out->wmark ); \
   msg = NULL
 
-  ulong tsorig = fd_frag_meta_ts_comp( fd_tickcount() );
+  long tsorig = fd_log_wallclock();
   fd_replay_notif_msg_t * msg = NULL;
 
   {

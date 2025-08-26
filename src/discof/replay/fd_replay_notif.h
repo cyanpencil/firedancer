@@ -19,7 +19,7 @@ struct __attribute__((aligned(64UL))) fd_replay_notif_msg {
       fd_hash_t block_hash;
       ulong transaction_count;
       ulong shred_cnt;
-      ulong ts;
+      long ts;
     } slot_exec;
   };
   uint type;

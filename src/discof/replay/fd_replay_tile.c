@@ -643,11 +643,16 @@ publish_slot_notifications( fd_replay_tile_ctx_t * ctx,
 
   long tsorig = fd_log_wallclock();
   fd_replay_notif_msg_t * msg = NULL;
+  fd_epoch_schedule_t const * epoch_schedule = fd_bank_epoch_schedule_query( ctx->slot_ctx->bank );
+  ulong slot_idx;
+  ulong epoch  = fd_slot_to_epoch( epoch_schedule, curr_slot, &slot_idx );
 
   {
     NOTIFY_START;
     msg->type                        = FD_REPLAY_SLOT_TYPE;
     msg->slot_exec.slot              = curr_slot;
+    msg->slot_exec.epoch             = epoch;
+    msg->slot_exec.slot_idx          = slot_idx;
     msg->slot_exec.parent            = fd_bank_parent_slot_get( ctx->slot_ctx->bank );
     msg->slot_exec.root              = ctx->consensus_root;
     msg->slot_exec.height            = block_entry_block_height;

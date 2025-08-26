@@ -14,6 +14,8 @@ struct __attribute__((aligned(64UL))) fd_replay_notif_msg {
       ulong parent;
       ulong root;
       ulong slot;
+      ulong slot_idx;
+      ulong epoch;
       ulong height;
       fd_hash_t bank_hash;
       fd_hash_t block_hash;

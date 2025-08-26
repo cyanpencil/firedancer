@@ -688,15 +688,11 @@ method_getEpochInfo(struct json_values* values, fd_rpc_ctx_t * ctx) {
       return 0;
     }
 
-    ulong slot_index = 0UL;
-    // ulong epoch = fd_slot_to_epoch( &epoch_bank->epoch_schedule, slot, &slot_index );
-    ulong epoch = 0UL;
-
     fd_web_reply_sprintf(ws, "{\"jsonrpc\":\"2.0\",\"result\":{\"absoluteSlot\":%lu,\"blockHeight\":%lu,\"epoch\":%lu,\"slotIndex\":%lu,\"slotsInEpoch\":%lu,\"transactionCount\":%lu},\"id\":%s}" CRLF,
                          slot,
                          info->slot_exec.height,
-                         epoch,
-                         slot_index,
+                         info->slot_exec.epoch,
+                         info->slot_exec.slot_idx,
                          432000UL,
                          info->slot_exec.transaction_count,
                          ctx->call_id);

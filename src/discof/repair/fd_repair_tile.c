@@ -1097,7 +1097,7 @@ static inline void
 during_housekeeping( fd_repair_tile_ctx_t * ctx ) {
   fd_repair_settime( ctx->repair, fd_log_wallclock() );
 
-# if LOGGING
+# if DEBUG_LOGGING
   long now = fd_log_wallclock();
   if( FD_UNLIKELY( now - ctx->tsprint > (long)30e9 ) ) {
     fd_forest_print( ctx->forest );

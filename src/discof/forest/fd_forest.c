@@ -485,8 +485,6 @@ fd_forest_blk_insert( fd_forest_t * forest, ulong slot, ulong parent_slot ) {
   fd_forest_frontier_t * frontier = fd_forest_frontier( forest );
   fd_forest_subtrees_t * subtrees = fd_forest_subtrees( forest );
   fd_forest_orphaned_t * orphaned = fd_forest_orphaned( forest );
-  fd_forest_consumed_t * consumed = fd_forest_consumed( forest );
-  fd_forest_cns_t *      conspool = fd_forest_conspool( forest );
   fd_forest_blk_t *      pool     = fd_forest_pool ( forest );
   ulong *                bfs      = fd_forest_deque( forest );
 
@@ -582,6 +580,7 @@ fd_forest_clear_fec( fd_forest_t * forest, ulong slot, uint fec_set_idx, uint ma
 
   ensure_consumed_reachable( forest, ele );
 
+  /* Remove any children of this ele that are in consumed */
 
   fd_forest_consumed_t * consumed = fd_forest_consumed( forest );
   fd_forest_cns_t *      conspool = fd_forest_conspool( forest );
@@ -589,7 +588,6 @@ fd_forest_clear_fec( fd_forest_t * forest, ulong slot, uint fec_set_idx, uint ma
   ulong *                queue    = fd_forest_deque( forest );
   FD_TEST( fd_forest_deque_cnt( queue ) == 0 );
 
-  /* Remove any children of this ele that are in consumed */
   fd_forest_deque_push_tail( queue, fd_forest_pool_idx( pool, ele ) );
   while( FD_LIKELY( fd_forest_deque_cnt( queue ) ) ) {
     fd_forest_blk_t * head = fd_forest_pool_ele( pool, fd_forest_deque_pop_head( queue ) );

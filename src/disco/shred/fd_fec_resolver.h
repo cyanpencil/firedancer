@@ -195,8 +195,6 @@ fd_fec_resolver_set_shred_version( fd_fec_resolver_t * resolver,
    last one and completes the FEC set.  In this case, the function
    populates any missing shreds in the FEC set stored in out_fec_set. */
 
-#define FD_FEC_RESOLVER_EVICT_NONE  (ULONG_MAX << 48) | FD_SHRED_BLK_MAX
-
 struct fd_fec_resolver_res {
    int   retval;
    ulong thrashed_slot;

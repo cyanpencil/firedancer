@@ -1507,7 +1507,8 @@ fd_feature_id_t const ids[] = {
     .id                        = {"\xf6\xd3\x41\xcb\x4b\xa2\x65\x9e\xac\xe7\x83\xef\x30\xe5\xfc\xc1\x9a\x94\x8b\x9b\x00\xba\x8a\xad\xf5\x2a\x6b\x9f\x65\x24\x5e\xc8"},
                                  /* HcW8ZjBezYYgvcbxNJwqv1t484Y2556qJsfNDWvJGZRH */
     .name                      = "lift_cpi_caller_restriction",
-    .cleaned_up                = {UINT_MAX, UINT_MAX, UINT_MAX} },
+    .cleaned_up                = {UINT_MAX, UINT_MAX, UINT_MAX},
+    .reverted                  = 1 },
 
   { .index                     = offsetof(fd_features_t, accounts_lt_hash)>>3,
     .id                        = {"\x04\xfb\xc1\xc8\xa2\xa2\xac\xda\x75\xee\xf4\x49\x65\x74\x21\x57\xdc\x0e\x4b\x16\x65\xd4\x98\xd0\x04\x28\x03\xf7\x8b\xa4\x41\xd8"},
